@@ -15,6 +15,14 @@ interface Props {
   onAffiliateClick?: (service: string, month: string) => void;
 }
 
+// Convert "February 2026" → "Feb 2026"
+const normalizeMonth = (fullMonth: string): string => {
+  if (!fullMonth || fullMonth === 'TBD') return 'TBD';
+  const [monthName, year] = fullMonth.split(' ');
+  const short = monthName.slice(0, 3);
+  return `${short} ${year}`;
+};
+
 const getNext12Months = () => {
   const months: string[] = [];
   let date = new Date();
@@ -30,41 +38,40 @@ export default function RollingCalendar({ shows, onAffiliateClick }: Props) {
 
   const calendar: Record<string, Show> = {};
 
-  // Group shows by their preferred month
+  // Group by normalized preferred month
   const byMonth: Record<string, Show[]> = {};
   shows.forEach(show => {
-    const m = show.window.primarySubscribe;
-    if (!byMonth[m]) byMonth[m] = [];
-    byMonth[m].push(show);
+    const normalized = normalizeMonth(show.window.primarySubscribe);
+    if (!byMonth[normalized]) byMonth[normalized] = [];
+    byMonth[normalized].push(show);
   });
 
-  // Process each month
+  // Process each month in order
   months.forEach(month => {
     const contenders = byMonth[month] || [];
 
     if (contenders.length === 0) return;
 
     if (contenders.length === 1) {
-      // No conflict → take preferred month
       calendar[month] = contenders[0];
     } else {
-      // Conflict → favorite wins, others get pushed forward
+      // Conflict → favorite wins
       const favorite = contenders.find(s => s.favorite);
-      const winner = favorite || contenders[0];   // favorite wins, else first one
+      const winner = favorite || contenders[0];
       calendar[month] = winner;
 
-      // Push losers forward to next empty slots
+      // Push losers forward
       const losers = contenders.filter(s => s !== winner);
-      let nextMonthIndex = months.indexOf(month) + 1;
+      let nextIdx = months.indexOf(month) + 1;
 
       losers.forEach(loser => {
-        let pushMonth = months[nextMonthIndex];
-        while (calendar[pushMonth] && nextMonthIndex < months.length) {
-          nextMonthIndex++;
-          pushMonth = months[nextMonthIndex];
+        let pushMonth = months[nextIdx];
+        while (calendar[pushMonth] && nextIdx < months.length) {
+          nextIdx++;
+          pushMonth = months[nextIdx];
         }
         if (pushMonth) calendar[pushMonth] = loser;
-        nextMonthIndex++;
+        nextIdx++;
       });
     }
   });
