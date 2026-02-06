@@ -8,11 +8,13 @@ export async function POST(request: Request) {
 
   const { tmdbId, favorite } = await request.json();
 
-  await supabase
+  const { error } = await supabase
     .from('user_shows')
     .update({ favorite })
     .eq('user_id', userId)
     .eq('tmdb_id', tmdbId);
+
+  if (error) return Response.json({ error: error.message }, { status: 400 });
 
   return Response.json({ success: true });
 }
