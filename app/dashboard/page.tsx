@@ -1,5 +1,5 @@
 // app/dashboard/page.tsx
-import { getAuth } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';           // ← use this one
 import { supabase } from '@/lib/supabase';
 import { getShowDetails, getNextSeasonEpisodes } from '@/lib/tmdb';
 import { calculateSubscriptionWindow } from '@/lib/recommendation';
@@ -9,7 +9,7 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
-  const { userId } = getAuth();   // ← This is the version that actually works on your domain
+  const { userId } = auth();   // ← correct way in Server Components
 
   if (!userId) {
     return <div className="p-12 text-center text-2xl">Please sign in to view your shows</div>;
