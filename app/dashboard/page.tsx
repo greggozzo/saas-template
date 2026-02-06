@@ -12,70 +12,67 @@ export default function Dashboard() {
   const [shows, setShows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  console.log('Dashboard mounted - userId:', userId);
-
   useEffect(() => {
-    if (!isLoaded) {
-      console.log('Clerk still loading...');
-      return;
-    }
-
-    console.log('Clerk loaded - userId from Clerk:', userId);
-
-    if (!userId) {
-      console.log('No userId → showing "Please sign in"');
+    if (!isLoaded || !userId) {
       setLoading(false);
       return;
     }
 
-    async function loadShows() {
-      console.log('Fetching user shows from Supabase...');
+    async function load() {
       const { data } = await supabase
         .from('user_shows')
         .select('tmdb_id')
         .eq('user_id', userId);
 
       const ids = data?.map((s: any) => s.tmdb_id) || [];
-      console.log('Shows found in DB:', ids);
 
       const loaded = await Promise.all(
         ids.map(async (id: number) => {
-          const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-          console.log(`Fetching TMDb data for ID ${id} with key:`, apiKey ? 'PRESENT' : 'MISSING');
-
-          const res = await fetch(
-            `https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&append_to_response=watch/providers`
-          );
+          const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&append_to_response=watch/providers`);
           const details = await res.json();
 
-          const epRes = await fetch(
-            `https://api.themoviedb.org/3/tv/${id}/season/${details.number_of_seasons || 1}?api_key=${apiKey}`
-          );
+          const epRes = await fetch(`https://api.themoviedb.org/3/tv/${id}/season/${details.number_of_seasons || 1}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`);
           const season = await epRes.json();
 
           const window = calculateSubscriptionWindow(season.episodes || []);
-          return { ...details, window };
+
+          // Get primary service name
+          const providers = details['watch/providers']?.results?.US?.flatrate || [];
+          const service = providers[0]?.provider_name || 'Unknown Service';
+
+          return { ...details, window, service };
         })
       );
 
-      console.log('Final loaded shows:', loaded);
       setShows(loaded);
       setLoading(false);
     }
 
-    loadShows();
+    load();
   }, [userId, isLoaded]);
 
-  if (!isLoaded) return <div className="p-20 text-center text-xl">Loading...</div>;
-  if (!userId) return <div className="p-20 text-center text-2xl">Please sign in to view your shows</div>;
+  const removeShow = async (tmdbId: number) => {
+    if (!confirm('Remove this show from your list?')) return;
 
-  // ... rest of your return code (grouped cards) stays the same ...
-  const grouped = shows.reduce((acc: any, show: any) => {
-    const month = show.window.primarySubscribe || 'TBD';
-    if (!acc[month]) acc[month] = [];
-    acc[month].push(show);
-    return acc;
-  }, {});
+    await fetch('/api/remove-show', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tmdbId }),
+    });
+
+    setShows(shows.filter(s => s.id !== tmdbId));
+  };
+
+  if (!isLoaded) return <div className="p-20 text-center">Loading...</div>;
+  if (!userId) return <div className="p-20 text-center text-2xl">Please sign in</div>;
+
+  // Group by "Service — Month"
+  const grouped: Record<string, any[]> = {};
+  shows.forEach(show => {
+    const key = `${show.service} — ${show.window.primarySubscribe}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(show);
+  });
 
   return (
     <div className="min-h-screen bg-zinc-950 py-12">
@@ -94,28 +91,25 @@ export default function Dashboard() {
           <p className="text-2xl text-zinc-400">No shows saved yet.</p>
         ) : (
           <div className="space-y-16">
-            {Object.entries(grouped).map(([month, monthShows]: [string, any]) => (
-              <div key={month}>
+            {Object.entries(grouped).map(([groupKey, monthShows]) => (
+              <div key={groupKey}>
                 <h2 className="text-3xl font-bold text-emerald-400 mb-6 border-b border-emerald-900 pb-3">
-                  {month} — Binge these shows
+                  {groupKey}
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
                   {monthShows.map((show: any) => (
-                    <div key={show.id} className="bg-zinc-900 rounded-3xl overflow-hidden">
+                    <div key={show.id} className="bg-zinc-900 rounded-3xl overflow-hidden relative group">
                       <ShowCard show={show} />
+
                       <div className="p-6">
                         <p className="text-emerald-400 font-bold">Cancel {show.window.primaryCancel}</p>
-			<button
-  			  onClick={async () => {
-    			    if (!confirm('Remove this show?')) return;
-    			    await fetch('/api/remove-show', {
-      			      method: 'POST',
-      			      headers: { 'Content-Type': 'application/json' },
-      			      body: JSON.stringify({ tmdbId: show.tmdb_id }),
-    			  });
-    			  window.location.reload(); // simple refresh for now
-  			}}
-  			className="mt-3 w-full text-red-400 hover:text-red-300 text-sm py-2 border border-red-900 rounded-xl transition-colors">Remove from My Shows</button>
+
+                        <button
+                          onClick={() => removeShow(show.id)}
+                          className="mt-4 w-full bg-red-900/50 hover:bg-red-900 text-red-400 text-sm py-2.5 rounded-2xl transition-colors"
+                        >
+                          Remove from My Shows
+                        </button>
                       </div>
                     </div>
                   ))}
