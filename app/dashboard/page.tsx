@@ -6,6 +6,8 @@ import { calculateSubscriptionWindow } from '@/lib/recommendation';
 import ShowCard from '@/components/ShowCard';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Dashboard() {
   const { userId } = getAuth();   // ← This is the version that actually works on your domain
 
