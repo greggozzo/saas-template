@@ -1,44 +1,22 @@
 // app/movie/[id]/page.tsx
-import { getShowDetails } from '@/lib/tmdb';
+import { getMovieDetails } from '@/lib/tmdb';   // make sure this function exists
 import Image from 'next/image';
-import AddToMyShowsButton from '@/components/AddToMyShowsButton';
 
 export default async function MoviePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const movie = await getShowDetails(id);   // TMDb uses same endpoint for movies
+  const movie = await getMovieDetails(id);
 
-  const posterUrl = movie.poster_path
+  console.log("MOVIE DATA:", movie);   // ← check Vercel logs
+
+  const poster = movie.poster_path
     ? `https://image.tmdb.org/t/p/w780${movie.poster_path}`
     : 'https://picsum.photos/id/1015/600/900';
 
-  const providers = movie['watch/providers']?.results?.US?.flatrate || [];
-  const primaryService = providers[0]?.provider_name || 'Unknown';
-
   return (
-    <div className="min-h-screen bg-zinc-950 text-white py-12">
-      <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12">
-        <div>
-          <Image src={posterUrl} alt={movie.title} width={600} height={900} className="rounded-3xl shadow-2xl" unoptimized />
-        </div>
-
-        <div className="space-y-10">
-          <div>
-            <h1 className="text-5xl font-bold mb-2">{movie.title}</h1>
-            <p className="text-zinc-400 text-lg">{movie.overview?.slice(0, 180)}...</p>
-          </div>
-
-          <div className="bg-zinc-900 rounded-3xl p-8">
-            <p className="uppercase tracking-widest text-emerald-400 text-sm mb-2">RECOMMENDATION</p>
-            <p className="text-4xl font-bold text-emerald-400">Watch now</p>
-
-            <a href="#" className="mt-8 block w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xl py-5 rounded-2xl text-center">
-              Subscribe to {primaryService} →
-            </a>
-
-            <AddToMyShowsButton tmdbId={movie.id} />
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-zinc-950 text-white p-12">
+      <h1 className="text-4xl font-bold mb-4">{movie.title}</h1>
+      <Image src={poster} alt={movie.title} width={500} height={750} unoptimized />
+      <p className="mt-6 text-zinc-400">{movie.overview}</p>
     </div>
   );
 }
