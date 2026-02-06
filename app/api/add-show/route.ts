@@ -3,7 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
-  const { userId } = auth();
+  const { userId } = getAuth(request);
+
   console.log("=== DEBUG ON streamrolling.com ===");
   console.log("userId from auth():", userId);
   console.log("Cookies received:", request.headers.get('cookie')?.slice(0, 200) + '...');
