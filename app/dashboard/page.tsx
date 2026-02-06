@@ -1,5 +1,5 @@
 // app/dashboard/page.tsx
-import { auth } from '@clerk/nextjs/server';
+import { getAuth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 import { getShowDetails, getNextSeasonEpisodes } from '@/lib/tmdb';
 import { calculateSubscriptionWindow } from '@/lib/recommendation';
@@ -9,13 +9,12 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
-  const { userId } = auth();
+  const { userId } = getAuth();   // ← this is the version that actually works on streamrolling.com
 
   if (!userId) {
     return <div className="p-12 text-center text-2xl">Please sign in to view your shows</div>;
   }
 
-  // ← everything below only runs if userId exists
   const { data: saved } = await supabase
     .from('user_shows')
     .select('tmdb_id')
