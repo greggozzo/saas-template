@@ -6,11 +6,11 @@ import { useMemo } from 'react';
 interface Show {
   tmdb_id: number;
   service: string;
-  window: { primarySubscribe: string; primaryCancel: string; isComplete: boolean };
+  window: { primarySubscribe: string; isComplete: boolean };
   favorite: boolean;
 }
 
-interface RollingCalendarProps {
+interface Props {
   shows: Show[];
   onAffiliateClick?: (service: string, month: string) => void;
 }
@@ -25,26 +25,25 @@ const getNext12Months = () => {
   return months;
 };
 
-export default function RollingCalendar({ shows, onAffiliateClick }: RollingCalendarProps) {
+export default function RollingCalendar({ shows, onAffiliateClick }: Props) {
   const months = useMemo(() => getNext12Months(), []);
 
-  // Smart rolling logic
+  // ─────────────────────────────────────────────────────────────
+  // Strong priority logic
+  // ─────────────────────────────────────────────────────────────
   const calendar: Record<string, Show> = {};
 
-  const favorites = shows.filter(s => s.favorite);
+  // 1. Already-aired favorites get the earliest possible month
+  const airedFavorites = shows.filter(s => s.favorite && s.window.isComplete);
+  const upcomingFavorites = shows.filter(s => s.favorite && !s.window.isComplete);
   const normals = shows.filter(s => !s.favorite);
 
-  // Sort: already-aired favorites first → normal favorites → normals
-  const sorted = [
-    ...favorites.filter(s => s.window.isComplete),
-    ...favorites.filter(s => !s.window.isComplete),
-    ...normals,
-  ];
-
-  sorted.forEach(show => {
+  // Place aired favorites first (March if possible)
+  [...airedFavorites, ...upcomingFavorites, ...normals].forEach(show => {
     let month = show.window.primarySubscribe;
     let attempts = 0;
 
+    // Try preferred month, then keep shifting forward until we find a free slot
     while (calendar[month] && attempts < 12) {
       const idx = months.indexOf(month);
       month = months[(idx + 1) % 12];
