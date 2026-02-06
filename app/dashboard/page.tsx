@@ -36,6 +36,7 @@ export default function Dashboard() {
             `${endpoint}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&append_to_response=watch/providers`
           );
           const details = await res.json();
+          console.log(`Loaded ${isMovie ? 'MOVIE' : 'TV'} ID ${dbShow.tmdb_id}:`, details.title || details.name);
 
           // Only fetch episodes for TV shows
           let window = { primarySubscribe: 'TBD', primaryCancel: 'TBD', isComplete: false };
