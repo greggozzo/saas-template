@@ -3,7 +3,6 @@
 import { useAuth } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getShowDetails, getNextSeasonEpisodes } from '@/lib/tmdb';
 import { calculateSubscriptionWindow } from '@/lib/recommendation';
 import ShowCard from '@/components/ShowCard';
 import Link from 'next/link';
@@ -13,42 +12,66 @@ export default function Dashboard() {
   const [shows, setShows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  console.log('Dashboard mounted - userId:', userId);
+
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded) {
+      console.log('Clerk still loading...');
+      return;
+    }
+
+    console.log('Clerk loaded - userId from Clerk:', userId);
+
     if (!userId) {
+      console.log('No userId → showing "Please sign in"');
       setLoading(false);
       return;
     }
 
-    async function load() {
+    async function loadShows() {
+      console.log('Fetching user shows from Supabase...');
       const { data } = await supabase
         .from('user_shows')
         .select('tmdb_id')
         .eq('user_id', userId);
 
       const ids = data?.map((s: any) => s.tmdb_id) || [];
+      console.log('Shows found in DB:', ids);
 
       const loaded = await Promise.all(
         ids.map(async (id: number) => {
-          const details = await getShowDetails(id.toString());
-          const episodes = await getNextSeasonEpisodes(id.toString());
-          const window = calculateSubscriptionWindow(episodes);
+          const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+          console.log(`Fetching TMDb data for ID ${id} with key:`, apiKey ? 'PRESENT' : 'MISSING');
+
+          const res = await fetch(
+            `https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&append_to_response=watch/providers`
+          );
+          const details = await res.json();
+
+          const epRes = await fetch(
+            `https://api.themoviedb.org/3/tv/${id}/season/${details.number_of_seasons || 1}?api_key=${apiKey}`
+          );
+          const season = await epRes.json();
+
+          const window = calculateSubscriptionWindow(season.episodes || []);
           return { ...details, window };
         })
       );
 
+      console.log('Final loaded shows:', loaded);
       setShows(loaded);
       setLoading(false);
     }
 
-    load();
+    loadShows();
   }, [userId, isLoaded]);
 
   if (!isLoaded) return <div className="p-20 text-center text-xl">Loading...</div>;
   if (!userId) return <div className="p-20 text-center text-2xl">Please sign in to view your shows</div>;
 
+  // ... rest of your return code (grouped cards) stays the same ...
   const grouped = shows.reduce((acc: any, show: any) => {
-    const month = show.window.primarySubscribe;
+    const month = show.window.primarySubscribe || 'TBD';
     if (!acc[month]) acc[month] = [];
     acc[month].push(show);
     return acc;
