@@ -1,5 +1,5 @@
 // app/api/add-show/route.ts
-import { getAuth } from '@clerk/nextjs/server';     // ← correct import
+import { getAuth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
@@ -7,15 +7,16 @@ export async function POST(request: Request) {
 
   console.log("=== DEBUG ON streamrolling.com ===");
   console.log("userId from getAuth(request):", userId || "undefined");
-  console.log("Cookie length:", request.headers.get('cookie')?.length || 0);
 
   if (!userId) {
     return Response.json({ error: 'Unauthorized - no userId from getAuth' }, { status: 401 });
   }
 
-  const { tmdbId } = await request.json();
+  const { tmdbId, mediaType = 'tv' } = await request.json();   // ← Accept mediaType
 
-  // Optional free tier check
+  console.log("Saving → tmdbId:", tmdbId, "| mediaType:", mediaType);
+
+  // Free tier check
   const { data: existing } = await supabase
     .from('user_shows')
     .select('*')
@@ -27,7 +28,11 @@ export async function POST(request: Request) {
 
   const { error } = await supabase
     .from('user_shows')
-    .insert({ user_id: userId, tmdb_id: tmdbId });
+    .insert({ 
+      user_id: userId, 
+      tmdb_id: tmdbId,
+      media_type: mediaType          // ← Save it!
+    });
 
   if (error) {
     return Response.json({ error: error.message }, { status: 400 });
