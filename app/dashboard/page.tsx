@@ -105,6 +105,17 @@ export default function Dashboard() {
                       <ShowCard show={show} />
                       <div className="p-6">
                         <p className="text-emerald-400 font-bold">Cancel {show.window.primaryCancel}</p>
+			<button
+  			  onClick={async () => {
+    			    if (!confirm('Remove this show?')) return;
+    			    await fetch('/api/remove-show', {
+      			      method: 'POST',
+      			      headers: { 'Content-Type': 'application/json' },
+      			      body: JSON.stringify({ tmdbId: show.tmdb_id }),
+    			  });
+    			  window.location.reload(); // simple refresh for now
+  			}}
+  			className="mt-3 w-full text-red-400 hover:text-red-300 text-sm py-2 border border-red-900 rounded-xl transition-colors">Remove from My Shows</button>
                       </div>
                     </div>
                   ))}

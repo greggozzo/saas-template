@@ -5,11 +5,14 @@ import Image from 'next/image';
 import AddToMyShowsButton from '@/components/AddToMyShowsButton';
 
 export default async function ShowPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;                    // ← this fixes the error
-
+  const { id } = await params;
   const show = await getShowDetails(id);
   const episodes = await getNextSeasonEpisodes(id);
   const window = calculateSubscriptionWindow(episodes);
+
+  // Get primary streaming service (first subscription provider)
+  const providers = show['watch/providers']?.results?.US?.flatrate || [];
+  const primaryService = providers[0] || { provider_name: 'the streaming service' };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white py-12">
@@ -32,42 +35,31 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
 
           <div className="bg-zinc-900 rounded-3xl p-8 space-y-10">
             <div>
-              <p className="uppercase tracking-widest text-emerald-400 text-sm mb-1">
-                PRIMARY RECOMMENDATION
-              </p>
+              <p className="uppercase tracking-widest text-emerald-400 text-sm mb-1">PRIMARY RECOMMENDATION</p>
               <p className="text-4xl font-bold text-emerald-400">
                 {window.primaryLabel} {window.primarySubscribe}
               </p>
               <p className="text-zinc-400 mt-2">{window.primaryNote}</p>
-              <p className="text-sm text-zinc-500 mt-1">
-                Cancel {window.primaryCancel}
-              </p>
+              <p className="text-sm text-zinc-500 mt-1">Cancel {window.primaryCancel}</p>
             </div>
 
             {!window.isComplete && window.secondarySubscribe && (
               <div className="border-t border-zinc-700 pt-8">
-                <p className="uppercase tracking-widest text-zinc-500 text-sm mb-1">
-                  Alternative (watch as it airs)
-                </p>
+                <p className="uppercase tracking-widest text-zinc-500 text-sm mb-1">Alternative (watch live)</p>
                 <p className="text-3xl font-bold">Subscribe in {window.secondarySubscribe}</p>
-                <p className="text-sm text-zinc-400 mt-1">
-                  First episode: {window.firstDate} • Last: {window.lastDate}
-                </p>
               </div>
             )}
 
+            {/* Updated button with service name */}
             <a
-              href="#" 
+              href="#" // ← we'll replace with real affiliate link later
               target="_blank"
               className="mt-6 block w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xl py-5 rounded-2xl text-center transition-colors"
             >
-              Go to {window.primarySubscribe} →
+              Subscribe to {primaryService.provider_name} for {window.primarySubscribe}
             </a>
 
-            {/* Add to My Shows button */}
-            <div className="mt-8">
-              <AddToMyShowsButton tmdbId={show.id} />
-            </div>
+            <AddToMyShowsButton tmdbId={show.id} />
           </div>
         </div>
       </div>
