@@ -1,5 +1,5 @@
 // app/dashboard/page.tsx
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { getAuth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 import { getShowDetails, getNextSeasonEpisodes } from '@/lib/tmdb';
 import { calculateSubscriptionWindow } from '@/lib/recommendation';
@@ -7,32 +7,28 @@ import ShowCard from '@/components/ShowCard';
 import Link from 'next/link';
 
 export default async function Dashboard() {
-  const { userId } = auth();
-  const user = await currentUser();
+  const { userId } = getAuth();   // ← This is the version that actually works on your domain
 
-  if (!userId) return <div>Please sign in</div>;
-
-  const isPaid = (user?.privateMetadata as any)?.isPaid === true;
+  if (!userId) {
+    return <div className="p-12 text-center text-2xl">Please sign in to view your shows</div>;
+  }
 
   const { data: saved } = await supabase
     .from('user_shows')
     .select('tmdb_id')
     .eq('user_id', userId);
 
-  const tmdbIds = saved?.map(s => s.tmdb_id) || [];
-  const canAddMore = isPaid || tmdbIds.length < 5;
+  const tmdbIds = saved?.map((s: any) => s.tmdb_id) || [];
 
-  // Fetch full details + windows
   const shows = await Promise.all(
     tmdbIds.map(async (id: number) => {
       const details = await getShowDetails(id.toString());
       const episodes = await getNextSeasonEpisodes(id.toString());
       const window = calculateSubscriptionWindow(episodes);
-      return { ...details, window, tmdb_id: id };
+      return { ...details, window };
     })
   );
 
-  // Group by primary binge month for rolling plan
   const grouped = shows.reduce((acc: any, show: any) => {
     const month = show.window.primarySubscribe;
     if (!acc[month]) acc[month] = [];
@@ -46,18 +42,13 @@ export default async function Dashboard() {
         <div className="flex justify-between items-end mb-12">
           <div>
             <h1 className="text-5xl font-bold">My Shows</h1>
-            <p className="text-emerald-400 mt-2">
-              {isPaid ? 'Unlimited plan' : `${tmdbIds.length}/5 shows saved`}
-            </p>
+            <p className="text-emerald-400 mt-2">{tmdbIds.length} shows saved</p>
           </div>
-          {!isPaid && (
-            <Link href="/upgrade" className="bg-emerald-500 text-black px-8 py-3 rounded-2xl font-bold">
-              Upgrade $2.99/mo →
-            </Link>
-          )}
+          <Link href="/upgrade" className="bg-emerald-500 text-black px-8 py-3 rounded-2xl font-bold">
+            Upgrade $2.99/mo →
+          </Link>
         </div>
 
-        {/* Rolling Plan View */}
         {Object.keys(grouped).length === 0 ? (
           <p className="text-2xl text-zinc-400">No shows saved yet. Search and add some!</p>
         ) : (
@@ -79,15 +70,6 @@ export default async function Dashboard() {
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {canAddMore && (
-          <div className="mt-16 bg-zinc-900 rounded-3xl p-8 text-center">
-            <p className="text-xl mb-6">Add more shows from the home page or search</p>
-            <Link href="/" className="bg-white text-black px-10 py-4 rounded-2xl font-bold">
-              Browse trending shows →
-            </Link>
           </div>
         )}
       </div>
