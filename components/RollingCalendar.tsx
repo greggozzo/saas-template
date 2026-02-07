@@ -1,11 +1,13 @@
 // components/RollingCalendar.tsx
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 interface Show {
   service: string;
   window: { primarySubscribe: string };
+  favorite: boolean;
+  watch_live: boolean;
 }
 
 interface Props {
@@ -22,19 +24,43 @@ const getNext12Months = () => {
   return months;
 };
 
+// Normalize "February 2026" → "Feb 2026"
+const normalizeMonth = (str: string): string => {
+  if (!str || str === 'TBD') return 'TBD';
+  const [monthName, year] = str.split(' ');
+  return `${monthName.slice(0, 3)} ${year}`;
+};
+
 export default function RollingCalendar({ shows }: Props) {
   const months = useMemo(() => getNext12Months(), []);
 
-  // Simple logic: first show wins each month (favorites first)
-  const sorted = [...shows].sort((a, b) => {
-    if (a.favorite && !b.favorite) return -1;
-    if (!a.favorite && b.favorite) return 1;
-    return 0;
-  });
+  useEffect(() => {
+    console.log("=== RollingCalendar Debug ===");
+    console.log("Shows received:", shows.length);
+    console.log("Raw preferred months:", shows.map(s => s.window.primarySubscribe));
+    console.log("Normalized preferred months:", shows.map(s => normalizeMonth(s.window.primarySubscribe)));
+    console.log("Calendar months:", months);
+  }, [shows, months]);
 
   const calendar: Record<string, Show> = {};
-  sorted.forEach(show => {
-    const month = show.window.primarySubscribe;
+
+  // Strong priority: Favorite + Watch Live > Favorite > Watch Live > Normal
+  const sortedShows = [...shows].sort((a, b) => {
+    const aScore = (a.favorite ? 100 : 0) + (a.watch_live ? 50 : 0);
+    const bScore = (b.favorite ? 100 : 0) + (b.watch_live ? 50 : 0);
+    return bScore - aScore;
+  });
+
+  sortedShows.forEach(show => {
+    let month = normalizeMonth(show.window.primarySubscribe);
+    let attempts = 0;
+
+    while (calendar[month] && attempts < 12) {
+      const idx = months.indexOf(month);
+      month = months[(idx + 1) % 12];
+      attempts++;
+    }
+
     if (!calendar[month]) {
       calendar[month] = show;
     }
