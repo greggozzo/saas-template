@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 
 interface Show {
   service: string;
-  window: { primarySubscribe: string };
+  window: { primarySubscribe: string; isComplete: boolean };
   favorite: boolean;
   watch_live: boolean;
 }
@@ -24,27 +24,25 @@ const getNext12Months = () => {
   return months;
 };
 
-// Convert "February 2026" → "Feb 2026"
-const normalizeMonth = (str: string): string => {
-  if (!str || str === 'TBD') return 'TBD';
-  const [monthName, year] = str.split(' ');
-  return `${monthName.slice(0, 3)} ${year}`;
-};
-
 export default function RollingCalendar({ shows }: Props) {
   const months = useMemo(() => getNext12Months(), []);
 
   const calendar: Record<string, Show> = {};
 
-  // Priority: Favorite + Watch Live > Favorite > Watch Live > Normal
+  // Priority order (highest first):
+  // 1. Favorite + Watch Live
+  // 2. Favorite (normal)
+  // 3. Watch Live (normal)
+  // 4. Normal shows (oldest first)
   const sortedShows = [...shows].sort((a, b) => {
     const aScore = (a.favorite ? 100 : 0) + (a.watch_live ? 50 : 0);
     const bScore = (b.favorite ? 100 : 0) + (b.watch_live ? 50 : 0);
-    return bScore - aScore;
+    if (aScore !== bScore) return bScore - aScore;
+    return 0; // preserve addition order for normal shows
   });
 
   sortedShows.forEach(show => {
-    let month = normalizeMonth(show.window.primarySubscribe);
+    let month = show.window.primarySubscribe;
     let attempts = 0;
 
     while (calendar[month] && attempts < 12) {

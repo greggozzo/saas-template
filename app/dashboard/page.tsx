@@ -95,30 +95,22 @@ export default function Dashboard() {
     setShows(shows.filter(s => s.tmdb_id !== tmdbId));
   };
 
-  // Drag and drop reordering
-  const onDragEnd = (result: any) => {
-    if (!result.destination) return;
-    const items = Array.from(shows);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-    setShows(items);
-  };
-
   if (!isLoaded) return <div className="p-20 text-center">Loading...</div>;
   if (!userId) return <div className="p-20 text-center text-2xl">Please sign in</div>;
 
   return (
     <div className="min-h-screen bg-zinc-950 py-12">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Search Bar */}
+
+        {/* Global Search Bar */}
         <div className="mb-10">
           <SearchBar />
         </div>
 
-        {/* Rolling Calendar */}
+        {/* Rolling Plan Calendar */}
         <RollingCalendar shows={shows} />
 
-        {/* My Shows */}
+        {/* My Shows Section */}
         <div className="mt-16">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-3xl font-bold">My Shows ({shows.length})</h2>
@@ -128,7 +120,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {shows.map((show, index) => (
+            {shows.map(show => (
               <div key={show.id} className="bg-zinc-900 rounded-3xl overflow-hidden group relative">
                 <ShowCard show={show} />
 
@@ -136,6 +128,7 @@ export default function Dashboard() {
                   <p className="text-emerald-400 font-bold">Cancel {show.window.primaryCancel}</p>
 
                   <div className="flex gap-4 mt-5">
+                    {/* Favorite Star */}
                     <button
                       onClick={() => toggleFavorite(show.tmdb_id, show.favorite)}
                       className={`text-3xl transition-all ${show.favorite ? 'text-yellow-400 scale-110' : 'text-zinc-600 hover:text-yellow-400'}`}
@@ -143,6 +136,7 @@ export default function Dashboard() {
                       ★
                     </button>
 
+                    {/* Watch Live Toggle */}
                     <button
                       onClick={() => toggleWatchLive(show.tmdb_id, show.watch_live)}
                       disabled={show.window.isComplete}
@@ -150,13 +144,14 @@ export default function Dashboard() {
                         show.watch_live 
                           ? 'bg-emerald-600 text-white border-emerald-600' 
                           : show.window.isComplete 
-                            ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' 
+                            ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed line-through' 
                             : 'border-zinc-700 text-zinc-400 hover:bg-zinc-800'
                       }`}
                     >
                       {show.window.isComplete ? 'Completed' : 'Watch Live'}
                     </button>
 
+                    {/* Remove Button */}
                     <button
                       onClick={() => removeShow(show.tmdb_id)}
                       className="text-red-400 hover:text-red-300 text-sm px-5 py-2 rounded-xl border border-red-900 hover:bg-red-950 transition-colors"
