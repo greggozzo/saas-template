@@ -54,7 +54,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               Subscribe to {primaryService} →
             </a>
 
-            <AddToMyShowsButton tmdbId={movie.id} />
+            <AddToMyShowsButton tmdbId={movie.id} mediaType="movie" />
           </div>
         </div>
       </div>
