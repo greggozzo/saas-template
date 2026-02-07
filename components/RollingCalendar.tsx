@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 
 interface Show {
   service: string;
-  window: { primarySubscribe: string; isComplete: boolean };
+  window: { primarySubscribe: string };
   favorite: boolean;
   watch_live: boolean;
 }
@@ -29,19 +29,14 @@ export default function RollingCalendar({ shows }: Props) {
 
   const calendar: Record<string, Show> = {};
 
-  // Priority order:
-  // 1. Favorite + Watch Live → absolute highest
-  // 2. Favorite (normal)
-  // 3. Watch Live (normal)
-  // 4. Everything else → added order (oldest first)
-  const sorted = [...shows].sort((a, b) => {
+  // Priority: Favorite + Watch Live > Favorite > Watch Live > Normal (addition order)
+  const sortedShows = [...shows].sort((a, b) => {
     const aScore = (a.favorite ? 100 : 0) + (a.watch_live ? 50 : 0);
     const bScore = (b.favorite ? 100 : 0) + (b.watch_live ? 50 : 0);
-    if (aScore !== bScore) return bScore - aScore;
-    return 0; // preserve addition order
+    return bScore - aScore;
   });
 
-  sorted.forEach(show => {
+  sortedShows.forEach(show => {
     let month = show.window.primarySubscribe;
     let attempts = 0;
 
