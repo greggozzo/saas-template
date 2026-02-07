@@ -5,9 +5,7 @@ import { useMemo } from 'react';
 
 interface Show {
   service: string;
-  window: { primarySubscribe: string; isComplete: boolean };
-  favorite: boolean;
-  watch_live: boolean;
+  window: { primarySubscribe: string };
 }
 
 interface Props {
@@ -27,30 +25,16 @@ const getNext12Months = () => {
 export default function RollingCalendar({ shows }: Props) {
   const months = useMemo(() => getNext12Months(), []);
 
-  const calendar: Record<string, Show> = {};
-
-  // Priority order (highest first):
-  // 1. Favorite + Watch Live
-  // 2. Favorite (normal)
-  // 3. Watch Live (normal)
-  // 4. Normal shows (oldest first)
-  const sortedShows = [...shows].sort((a, b) => {
-    const aScore = (a.favorite ? 100 : 0) + (a.watch_live ? 50 : 0);
-    const bScore = (b.favorite ? 100 : 0) + (b.watch_live ? 50 : 0);
-    if (aScore !== bScore) return bScore - aScore;
-    return 0; // preserve addition order for normal shows
+  // Simple logic: first show wins each month (favorites first)
+  const sorted = [...shows].sort((a, b) => {
+    if (a.favorite && !b.favorite) return -1;
+    if (!a.favorite && b.favorite) return 1;
+    return 0;
   });
 
-  sortedShows.forEach(show => {
-    let month = show.window.primarySubscribe;
-    let attempts = 0;
-
-    while (calendar[month] && attempts < 12) {
-      const idx = months.indexOf(month);
-      month = months[(idx + 1) % 12];
-      attempts++;
-    }
-
+  const calendar: Record<string, Show> = {};
+  sorted.forEach(show => {
+    const month = show.window.primarySubscribe;
     if (!calendar[month]) {
       calendar[month] = show;
     }
